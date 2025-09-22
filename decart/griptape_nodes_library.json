@@ -1,0 +1,47 @@
+{
+  "name": "Decart Library",
+  "library_schema_version": "0.1.0",
+  "settings": [
+    {
+        "description": "Environment variables for Decart API access",
+        "category": "nodes.Decart",
+        "contents": {
+            "DECART_API_KEY": "$DECART_API_KEY"
+        }
+    }
+  ],
+  "metadata": {
+    "author": "Ian Massingham",
+    "description": "Nodes for interating with the Decart API",
+    "library_version": "0.1.0",
+    "engine_version": "0.55.0",
+    "tags": [
+      "Griptape",
+      "AI",
+      "Decart",
+      "Video Generation",
+      "Video Editing"
+    ]
+  },
+  "categories": [
+    {
+      "video/decart": {
+        "color": "border-pink-500",
+        "title": "Decart",
+        "description": "Decart Nodes",
+        "icon": "Folder"
+      }
+    }
+  ],
+  "nodes": [
+    {
+      "class_name": "DecartLucyVideoEdit",
+      "file_path": "decart_lucy_video_edit.py",
+      "metadata": {
+        "category": "video/decart",
+        "description": "Edit a video using the Decart Lucy Video Edit API.",
+        "display_name": "Decart Lucy Video Edit"
+      }
+    }
+  ]
+}
