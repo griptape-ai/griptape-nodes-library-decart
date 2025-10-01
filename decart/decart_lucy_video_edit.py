@@ -7,11 +7,11 @@ from io import BytesIO
 
 import requests
 
+from griptape.artifacts import VideoUrlArtifact
 from griptape_nodes.exe_types.core_types import Parameter, ParameterMode
 from griptape_nodes.exe_types.node_types import AsyncResult, DataNode
 from griptape_nodes.retained_mode.griptape_nodes import GriptapeNodes
 from griptape_nodes.traits.options import Options
-from griptape_nodes_library.video.video_url_artifact import VideoUrlArtifact
 
 logger = logging.getLogger(__name__)
 
