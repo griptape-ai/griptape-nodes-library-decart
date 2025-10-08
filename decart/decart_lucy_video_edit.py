@@ -11,7 +11,6 @@ from griptape.artifacts import VideoUrlArtifact
 from griptape_nodes.exe_types.core_types import Parameter, ParameterMode
 from griptape_nodes.exe_types.node_types import AsyncResult, DataNode
 from griptape_nodes.retained_mode.griptape_nodes import GriptapeNodes
-from griptape_nodes.traits.options import Options
 
 logger = logging.getLogger(__name__)
 
@@ -213,7 +212,7 @@ class DecartLucyVideoEdit(DataNode):
         return output_video 
         
     def _validate_api_key(self) -> str:
-        api_key = self.get_config_value(service=self.SERVICE_NAME, value=self.API_KEY_ENV_VAR)
+        api_key = GriptapeNodes.SecretsManager().get_secret(self.API_KEY_ENV_VAR)
         if not api_key:
             msg = f"{self.name} is missing {self.API_KEY_ENV_VAR}. Ensure it's set in the environment/config."
             raise ValueError(msg)
