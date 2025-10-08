@@ -3,11 +3,13 @@
   "library_schema_version": "0.1.0",
   "settings": [
     {
-        "description": "Environment variables for Decart API access",
-        "category": "nodes.Decart",
-        "contents": {
-            "DECART_API_KEY": "$DECART_API_KEY"
-        }
+      "description": "API keys required by nodes in this library",
+      "category": "app_events.on_app_initialization_complete",
+      "contents": {
+        "secrets_to_register": [
+          "DECART_API_KEY"
+        ]
+      }
     }
   ],
   "metadata": {
