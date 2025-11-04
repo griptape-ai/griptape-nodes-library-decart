@@ -14,22 +14,23 @@ from griptape_nodes.retained_mode.griptape_nodes import GriptapeNodes
 
 logger = logging.getLogger(__name__)
 
-class DecartLucyVideoEdit(DataNode):
+class DecartLucyDevV2V(DataNode):
 
-    """Generate a video using the Decart Lucy Video Edit API.
+    """Generate a video from an input video using the Decart Lucy Dev V2V API.
 
     Args:
-        video_input: The input video to process.
-        prompt: The prompt to process.
-        video_output: The output video from Decart Lucy Video Edit.
+        video_input: The input video to transform.
+        prompt: The prompt to guide video transformation.
+        seed: Optional seed for reproducible generation.
+        resolution: Video resolution (default: 720p).
+        video_output: The output video from Decart Lucy Dev V2V.
 
     """
-
 
     SERVICE_NAME = "Decart"
     API_KEY_ENV_VAR = "DECART_API_KEY"
     BASE_URL = "https://api.decart.ai/v1/generate/"
-    MODEL_NAME = "lucy-pro-v2v"
+    MODEL_NAME = "lucy-dev-v2v"
 
     def __init__(self, **kwargs) -> None:
         super().__init__(**kwargs)
@@ -37,28 +38,48 @@ class DecartLucyVideoEdit(DataNode):
         self.add_parameter(
             Parameter(
                 name="video_input",
-                tooltip="Input video to edit",
+                tooltip="Input video to transform",
                 type="VideoUrlArtifact",
                 input_types=["VideoUrlArtifact", "VideoArtifact"],
-                allowed_modes={ParameterMode.INPUT,ParameterMode.PROPERTY,ParameterMode.OUTPUT},
+                allowed_modes={ParameterMode.INPUT, ParameterMode.PROPERTY, ParameterMode.OUTPUT},
                 ui_options={"display_name": "Input Video"}
             )
         )
         self.add_parameter(
             Parameter(
                 name="prompt",
-                tooltip="Prompt to edit the video",
+                tooltip="Text prompt for video transformation",
                 type="str",
-                allowed_modes={ParameterMode.INPUT,ParameterMode.PROPERTY,ParameterMode.OUTPUT},
+                allowed_modes={ParameterMode.INPUT, ParameterMode.PROPERTY, ParameterMode.OUTPUT},
                 ui_options={"display_name": "Prompt",
-                            "placeholder_text": "Describe the video edit you want to make...",
+                            "placeholder_text": "Describe the video transformation you want...",
                             "multiline": True},
             )
         )
         self.add_parameter(
             Parameter(
+                name="seed",
+                tooltip="Seed for reproducible generation",
+                type="int",
+                default_value=None,
+                allowed_modes={ParameterMode.INPUT, ParameterMode.PROPERTY, ParameterMode.OUTPUT},
+                ui_options={"display_name": "Seed"}
+            )
+        )
+        self.add_parameter(
+            Parameter(
+                name="resolution",
+                tooltip="Video resolution",
+                type="str",
+                default_value="720p",
+                allowed_modes={ParameterMode.INPUT, ParameterMode.PROPERTY, ParameterMode.OUTPUT},
+                ui_options={"display_name": "Resolution"}
+            )
+        )
+        self.add_parameter(
+            Parameter(
                 name="video_output",
-                tooltip="Output video from Decart Lucy Video Edit",
+                tooltip="Output video from Decart Lucy Dev V2V",
                 type="VideoUrlArtifact",
                 output_type="VideoUrlArtifact",
                 allowed_modes={ParameterMode.OUTPUT},
@@ -151,7 +172,7 @@ class DecartLucyVideoEdit(DataNode):
             raise ValueError("Empty response content - no video data received")
         
         # Generate a unique filename for the output video
-        filename = f"decart_output_{uuid.uuid4()}.mp4"
+        filename = f"decart_v2v_output_{uuid.uuid4()}.mp4"
         
         # Save the video bytes to the static file server
         url = GriptapeNodes.StaticFilesManager().save_static_file(response_content, filename)
@@ -167,6 +188,8 @@ class DecartLucyVideoEdit(DataNode):
         headers = {"X-API-KEY": f"{api_key}"}
         video_input = self.get_parameter_value("video_input")
         prompt = self.get_parameter_value("prompt")
+        seed = self.get_parameter_value("seed")
+        resolution = self.get_parameter_value("resolution")
 
         if not video_input:
             raise ValueError("No input video provided")
@@ -179,6 +202,10 @@ class DecartLucyVideoEdit(DataNode):
 
         # Prepare data payload
         data_payload = {"prompt": prompt}
+        if seed is not None:
+            data_payload["seed"] = seed
+        if resolution:
+            data_payload["resolution"] = resolution
 
         # Debug logging for request payload
         logger.debug(f"API request payload: {data_payload}")
@@ -190,7 +217,7 @@ class DecartLucyVideoEdit(DataNode):
 
         # Make API request
         api_url = f"{self.BASE_URL}{self.MODEL_NAME}"
-        logger.info(f"Sending video edit request to Decart API: {api_url}")
+        logger.info(f"Sending video-to-video request to Decart API: {api_url}")
         
         try:
             response = requests.post(
@@ -207,7 +234,7 @@ class DecartLucyVideoEdit(DataNode):
             response.raise_for_status()
             
             response_size = len(response.content)
-            logger.info(f"Successfully received edited video: {response_size} bytes")
+            logger.info(f"Successfully received transformed video: {response_size} bytes")
             logger.debug(f"Response content type: {response.headers.get('content-type', 'unknown')}")
             
             # Log truncated response for binary content
@@ -235,4 +262,3 @@ class DecartLucyVideoEdit(DataNode):
             msg = f"{self.name} is missing {self.API_KEY_ENV_VAR}. Ensure it's set in the environment/config."
             raise ValueError(msg)
         return api_key
-
