@@ -29,8 +29,16 @@
     {
       "video/decart": {
         "color": "border-pink-500",
-        "title": "Decart",
-        "description": "Decart Nodes",
+        "title": "Decart Video",
+        "description": "Decart Video Generation Nodes",
+        "icon": "Folder"
+      }
+    },
+    {
+      "image/decart": {
+        "color": "border-purple-500",
+        "title": "Decart Image",
+        "description": "Decart Image Generation Nodes",
         "icon": "Folder"
       }
     }
@@ -43,6 +51,60 @@
         "category": "video/decart",
         "description": "Edit a video using the Decart Lucy Video Edit API.",
         "display_name": "Decart Lucy Video Edit"
+      }
+    },
+    {
+      "class_name": "DecartLucyDevI2V",
+      "file_path": "decart_lucy_dev_i2v.py",
+      "metadata": {
+        "category": "video/decart",
+        "description": "Generate a video from an image using the Decart Lucy Dev I2V API.",
+        "display_name": "Decart Lucy Dev I2V"
+      }
+    },
+    {
+      "class_name": "DecartLucyDevV2V",
+      "file_path": "decart_lucy_dev_v2v.py",
+      "metadata": {
+        "category": "video/decart",
+        "description": "Transform a video using the Decart Lucy Dev V2V API.",
+        "display_name": "Decart Lucy Dev V2V"
+      }
+    },
+    {
+      "class_name": "DecartLucyProT2I",
+      "file_path": "decart_lucy_pro_t2i.py",
+      "metadata": {
+        "category": "image/decart",
+        "description": "Generate an image from text using the Decart Lucy Pro T2I API.",
+        "display_name": "Decart Lucy Pro T2I"
+      }
+    },
+    {
+      "class_name": "DecartLucyProT2V",
+      "file_path": "decart_lucy_pro_t2v.py",
+      "metadata": {
+        "category": "video/decart",
+        "description": "Generate a video from text using the Decart Lucy Pro T2V API.",
+        "display_name": "Decart Lucy Pro T2V"
+      }
+    },
+    {
+      "class_name": "DecartLucyProI2V",
+      "file_path": "decart_lucy_pro_i2v.py",
+      "metadata": {
+        "category": "video/decart",
+        "description": "Generate a video from an image using the Decart Lucy Pro I2V API.",
+        "display_name": "Decart Lucy Pro I2V"
+      }
+    },
+    {
+      "class_name": "DecartLucyProI2I",
+      "file_path": "decart_lucy_pro_i2i.py",
+      "metadata": {
+        "category": "image/decart",
+        "description": "Transform an image using the Decart Lucy Pro I2I API.",
+        "display_name": "Decart Lucy Pro I2I"
       }
     }
   ]
