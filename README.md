@@ -1,14 +1,25 @@
-# Decart Lucy Video Edit - Griptape Nodes Library
+# Decart AI - Griptape Nodes Library
 
-A Griptape Nodes library for video editing using the [Decart Lucy Video Edit API](https://decart.ai/). Transform and edit videos with AI-powered capabilities through natural language prompts.
+A comprehensive Griptape Nodes library for AI-powered content generation using the [Decart API](https://decart.ai/). Generate and transform images and videos with cutting-edge AI models through natural language prompts.
 
 ## 🎥 Features
 
-- **AI-Powered Video Editing**: Edit videos using natural language prompts
-- **Multiple Input Formats**: Supports VideoUrlArtifact, VideoArtifact, and dictionary inputs
+### Lucy Dev Models
+- **Image-to-Video (I2V)**: Convert static images into dynamic videos
+- **Video-to-Video (V2V)**: Transform and edit existing videos
+
+### Lucy Pro Models  
+- **Text-to-Image (T2I)**: Generate high-quality images from text descriptions
+- **Text-to-Video (T2V)**: Create videos directly from text prompts
+- **Image-to-Video (I2V)**: Advanced image-to-video conversion with Pro quality
+- **Image-to-Image (I2I)**: Transform and enhance existing images
+
+### Technical Features
+- **Multiple Input Formats**: Supports various artifact types and dictionary inputs
 - **Seamless Integration**: Works within the Griptape Nodes ecosystem
 - **Comprehensive Logging**: Built-in logging for debugging and monitoring
 - **Error Handling**: Robust error handling with detailed feedback
+- **Flexible Parameters**: Configurable seed, resolution, and prompt options
 
 ## 📦 Installation
 
@@ -36,7 +47,9 @@ A Griptape Nodes library for video editing using the [Decart Lucy Video Edit API
  * Click on *Refresh Libraries*
 
 
-3. **Verify installation** by checking that the "Decart Lucy Video Edit" node appears in your Griptape Nodes interface in the "Video/Decart" category.
+3. **Verify installation** by checking that all Decart nodes appear in your Griptape Nodes interface:
+   - **Video/Decart category**: Lucy Dev I2V, Lucy Dev V2V, Lucy Pro T2V, Lucy Pro I2V, Lucy Video Edit
+   - **Image/Decart category**: Lucy Pro T2I, Lucy Pro I2I
 
 ## 🔑 API Key Setup
 
@@ -69,66 +82,126 @@ Then restart Griptape Nodes to pick up the environment variable.
 
 ## 🚀 Usage
 
+### Available Nodes
+
+#### Lucy Dev Models
+- **Decart Lucy Dev I2V**: Convert images to videos with development-quality processing
+- **Decart Lucy Dev V2V**: Transform videos with development-quality processing
+
+#### Lucy Pro Models
+- **Decart Lucy Pro T2I**: Generate high-quality images from text prompts
+- **Decart Lucy Pro T2V**: Create high-quality videos from text prompts  
+- **Decart Lucy Pro I2V**: Convert images to videos with professional-quality processing
+- **Decart Lucy Pro I2I**: Transform images with professional-quality processing
+
+#### Legacy Node
+- **Decart Lucy Video Edit**: Original video editing node (V2V functionality)
+
 ### Using in Griptape Nodes
 
-1. **Add the node** to your workflow by dragging "Decart Lucy Video Edit" from the node palette
-2. **Connect your video input** to the `video_input` parameter
-3. **Set your edit prompt** in the `prompt` parameter
-4. **Connect the output** `video_output` to other nodes in your workflow
-5. **Run your workflow** to process the video
+1. **Add nodes** to your workflow by dragging from the appropriate category:
+   - **Video/Decart**: For video generation and transformation nodes
+   - **Image/Decart**: For image generation and transformation nodes
+2. **Connect inputs** based on the node type:
+   - Text-only nodes (T2I, T2V): Only require prompt input
+   - Image input nodes (I2V, I2I): Require image input + prompt
+   - Video input nodes (V2V): Require video input + prompt
+3. **Configure parameters**: Set prompt, seed (optional), and resolution (optional)
+4. **Connect outputs** to other nodes in your workflow
+5. **Run your workflow** to generate content
 
 ### Supported Input Formats
 
-The node accepts video inputs in multiple formats:
-
-- **VideoUrlArtifact**: URLs pointing to video files
-- **VideoArtifact**: Direct video file artifacts
+- **Images**: ImageUrlArtifact, ImageArtifact, or dictionary representations
+- **Videos**: VideoUrlArtifact, VideoArtifact, or dictionary representations  
 
 ### Example Prompts
 
+#### Image Generation (T2I)
+- `"A serene mountain landscape at sunset with golden light"`
+- `"Portrait of a cyberpunk character with neon lighting"`
+- `"Abstract geometric patterns in vibrant colors"`
+
+#### Video Generation (T2V, I2V)
+- `"A time-lapse of clouds moving across the sky"`
+- `"Camera slowly zooming into a bustling city street"`
+- `"Gentle waves lapping on a tropical beach"`
+
+#### Image/Video Transformation (I2I, V2V)
 - `"Change the background to a sunset scene"`
 - `"Make the person wear a black leather jacket"`
 - `"Add rain effects to the scene"`
 - `"Convert to black and white with vintage film grain"`
-- `"Remove the background and make it transparent"`
 
 ## 📋 Node Parameters
 
-### Input Parameters
+### Common Parameters (All Nodes)
 
 | Parameter | Type | Description | Required |
 |-----------|------|-------------|----------|
-| `video_input` | VideoUrlArtifact, VideoArtifact, or dict | The input video to edit | ✅ |
-| `prompt` | string | Natural language description of the desired edit | ✅ |
+| `prompt` | string | Natural language description for generation/transformation | ✅ |
+| `seed` | integer | Seed for reproducible generation | ❌ |
+| `resolution` | string | Output resolution (default: "720p") | ❌ |
+
+### Node-Specific Input Parameters
+
+| Node Type | Additional Input | Type | Description |
+|-----------|------------------|------|-------------|
+| **T2I, T2V** | None | - | Text-only generation |
+| **I2V, I2I** | `image_input` | ImageUrlArtifact, ImageArtifact | Source image |
+| **V2V, Video Edit** | `video_input` | VideoUrlArtifact, VideoArtifact | Source video |
 
 ### Output Parameters
 
-| Parameter | Type | Description |
-|-----------|------|-------------|
-| `video_output` | VideoUrlArtifact | The edited video result |
+| Node Type | Output | Type | Description |
+|-----------|--------|------|-------------|
+| **T2I, I2I** | `image_output` | ImageUrlArtifact | Generated/transformed image |
+| **T2V, I2V, V2V, Video Edit** | `video_output` | VideoUrlArtifact | Generated/transformed video |
 
 ## 🔧 Configuration
 
 ### API Configuration
 
-The node uses the following configuration:
+All nodes use the following shared configuration:
 
 - **Service Name**: `"Decart"`
 - **API Key Environment Variable**: `"DECART_API_KEY"`
 - **Base URL**: `"https://api.decart.ai/v1/generate/"`
-- **Model**: `"lucy-pro-v2v"`
+
+### API Endpoints by Node
+
+| Node | API Endpoint |
+|------|--------------|
+| **Lucy Dev I2V** | `lucy-dev-i2v` |
+| **Lucy Dev V2V** | `lucy-dev-v2v` |
+| **Lucy Pro T2I** | `lucy-pro-t2i` |
+| **Lucy Pro T2V** | `lucy-pro-t2v` |
+| **Lucy Pro I2V** | `lucy-pro-i2v` |
+| **Lucy Pro I2I** | `lucy-pro-i2i` |
+| **Lucy Video Edit** | `lucy-pro-v2v` |
 
 ## 📊 Logging
 
-The node provides API request logging for monitoring and debugging:
+All nodes provide comprehensive API request logging for monitoring and debugging:
+
+- Request URLs and parameters
+- Response status codes and sizes  
+- Error messages and stack traces
+- Processing times and performance metrics
 
 ## 🛠️ Library Structure
 
 ```
 griptape-nodes-library-decart/
 ├── decart/
-│   ├── decart_lucy_video_edit.py    # Main node implementation
-│   └── griptape_nodes_library.json  # Node metadata and configuration
+│   ├── decart_lucy_dev_i2v.py       # Lucy Dev I2V node
+│   ├── decart_lucy_dev_v2v.py       # Lucy Dev V2V node  
+│   ├── decart_lucy_pro_t2i.py       # Lucy Pro T2I node
+│   ├── decart_lucy_pro_t2v.py       # Lucy Pro T2V node
+│   ├── decart_lucy_pro_i2v.py       # Lucy Pro I2V node
+│   ├── decart_lucy_pro_i2i.py       # Lucy Pro I2I node
+│   ├── decart_lucy_video_edit.py    # Legacy video edit node
+│   └── griptape_nodes_library.json  # Library metadata and configuration
 ├── pyproject.toml                   # Package configuration
 └── README.md                        # This documentation
 ```
@@ -136,9 +209,10 @@ griptape-nodes-library-decart/
 ### Node Metadata
 
 The library includes a `griptape_nodes_library.json` file that defines:
-- Node categories and display information
-- API key configuration requirements
-- Node descriptions and metadata
+- **7 total nodes** across Lucy Dev, Lucy Pro, and legacy models
+- **Two categories**: Video/Decart and Image/Decart for organized node palette
+- **API key configuration** requirements for DECART_API_KEY
+- **Node descriptions and metadata** for each generation type
 
 ## 🔍 Troubleshooting
 
@@ -151,12 +225,15 @@ ValueError: DecartLucyVideoEdit_1 is missing DECART_API_KEY. Ensure it's set in 
 
 **Solution**: Ensure your API key is properly configured using one of the methods described in the [API Key Setup](#-api-key-setup) section.
 
-#### Invalid Video Format
+#### Invalid Input Format
 ```
-ValueError: Unsupported video input type: <class 'str'>
+ValueError: Unsupported image/video input type: <class 'str'>
 ```
 
-**Solution**: Ensure your video input is in one of the supported formats (VideoUrlArtifact, VideoArtifact).
+**Solution**: Ensure your inputs are in supported formats:
+- **Images**: ImageUrlArtifact, ImageArtifact, or dict
+- **Videos**: VideoUrlArtifact, VideoArtifact, or dict
+- **Flow**: File path, URL, or base64 string
 
 #### API Request Failed
 ```
