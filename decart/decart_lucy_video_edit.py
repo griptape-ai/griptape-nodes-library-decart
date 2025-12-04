@@ -11,6 +11,7 @@ from griptape.artifacts import VideoUrlArtifact
 from griptape_nodes.exe_types.core_types import Parameter, ParameterMode
 from griptape_nodes.exe_types.node_types import AsyncResult, DataNode
 from griptape_nodes.retained_mode.griptape_nodes import GriptapeNodes
+from griptape_nodes.retained_mode.events.os_events import ExistingFilePolicy
 
 logger = logging.getLogger(__name__)
 
@@ -154,7 +155,7 @@ class DecartLucyVideoEdit(DataNode):
         filename = f"decart_output_{uuid.uuid4()}.mp4"
         
         # Save the video bytes to the static file server
-        url = GriptapeNodes.StaticFilesManager().save_static_file(response_content, filename)
+        url = GriptapeNodes.StaticFilesManager().save_static_file(response_content, filename, ExistingFilePolicy.CREATE_NEW)
         
         # Create and return VideoUrlArtifact with the URL
         return VideoUrlArtifact(url)
