@@ -8,6 +8,7 @@ from io import BytesIO
 import requests
 
 from griptape.artifacts import ImageArtifact, ImageUrlArtifact, VideoUrlArtifact
+from griptape_nodes.files.file import File, FileLoadError
 from griptape_nodes.exe_types.core_types import Parameter, ParameterMode
 from griptape_nodes.exe_types.node_types import AsyncResult, DataNode
 from griptape_nodes.retained_mode.griptape_nodes import GriptapeNodes
@@ -123,9 +124,7 @@ class DecartLucyProI2V(DataNode):
                     
             elif value.startswith(("http://", "https://")):
                 # Handle URL in dictionary
-                response = requests.get(value)
-                response.raise_for_status()
-                image_bytes = response.content
+                image_bytes = File(value).read_bytes()
                 
                 # Extract filename from URL
                 url_path = value.split('/')[-1]
