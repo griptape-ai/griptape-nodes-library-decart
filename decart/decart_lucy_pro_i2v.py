@@ -2,17 +2,16 @@ from __future__ import annotations
 
 import base64
 import logging
-import uuid
 from io import BytesIO
 
 import requests
 
 from griptape.artifacts import ImageArtifact, ImageUrlArtifact, VideoUrlArtifact
-from griptape_nodes.files.file import File, FileLoadError
 from griptape_nodes.exe_types.core_types import Parameter, ParameterMode
 from griptape_nodes.exe_types.node_types import AsyncResult, DataNode
+from griptape_nodes.exe_types.param_components.project_file_parameter import ProjectFileParameter
+from griptape_nodes.files.file import File, FileLoadError
 from griptape_nodes.retained_mode.griptape_nodes import GriptapeNodes
-from griptape_nodes.retained_mode.events.os_events import ExistingFilePolicy
 from griptape_nodes.traits.options import Options
 
 logger = logging.getLogger(__name__)
@@ -90,6 +89,8 @@ class DecartLucyProI2V(DataNode):
                 ui_options={"display_name": "Output Video"}
             )
         )
+        self._output_file = ProjectFileParameter(node=self, name="output_file", default_filename="decart_video.mp4")
+        self._output_file.add_parameter()
 
     def validate_node(self) -> list[Exception] | None:
         return None
@@ -172,15 +173,12 @@ class DecartLucyProI2V(DataNode):
         """
         if not response_content:
             raise ValueError("Empty response content - no video data received")
-        
-        # Generate a unique filename for the output video
-        filename = f"decart_pro_i2v_output_{uuid.uuid4()}.mp4"
-        
-        # Save the video bytes to the static file server
-        url = GriptapeNodes.StaticFilesManager().save_static_file(response_content, filename, ExistingFilePolicy.CREATE_NEW)
-        
+
+        # Save the video bytes to the project file
+        saved = self._output_file.build_file().write_bytes(response_content)
+
         # Create and return VideoUrlArtifact with the URL
-        return VideoUrlArtifact(url)
+        return VideoUrlArtifact(saved.location)
 
     def process(self) -> AsyncResult[None]:
         yield lambda: self._process()
