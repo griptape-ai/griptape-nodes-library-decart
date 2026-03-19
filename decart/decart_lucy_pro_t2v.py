@@ -3,7 +3,6 @@ from __future__ import annotations
 import logging
 
 import requests
-
 from griptape.artifacts import VideoUrlArtifact
 from griptape_nodes.exe_types.core_types import Parameter, ParameterMode
 from griptape_nodes.exe_types.node_types import AsyncResult, DataNode
@@ -13,8 +12,8 @@ from griptape_nodes.traits.options import Options
 
 logger = logging.getLogger(__name__)
 
-class DecartLucyProT2V(DataNode):
 
+class DecartLucyProT2V(DataNode):
     """Generate a video from text using the Decart Lucy Pro T2V API.
 
     Args:
@@ -40,9 +39,11 @@ class DecartLucyProT2V(DataNode):
                 tooltip="Text prompt for video generation",
                 type="str",
                 allowed_modes={ParameterMode.INPUT, ParameterMode.PROPERTY, ParameterMode.OUTPUT},
-                ui_options={"display_name": "Prompt",
-                            "placeholder_text": "Describe the video you want to generate...",
-                            "multiline": True},
+                ui_options={
+                    "display_name": "Prompt",
+                    "placeholder_text": "Describe the video you want to generate...",
+                    "multiline": True,
+                },
             )
         )
         self.add_parameter(
@@ -52,7 +53,7 @@ class DecartLucyProT2V(DataNode):
                 type="int",
                 default_value=None,
                 allowed_modes={ParameterMode.INPUT, ParameterMode.PROPERTY, ParameterMode.OUTPUT},
-                ui_options={"display_name": "Seed"}
+                ui_options={"display_name": "Seed"},
             )
         )
         self.add_parameter(
@@ -63,7 +64,7 @@ class DecartLucyProT2V(DataNode):
                 default_value="720p",
                 allowed_modes={ParameterMode.INPUT, ParameterMode.PROPERTY, ParameterMode.OUTPUT},
                 ui_options={"display_name": "Resolution"},
-                traits={Options(choices=["720p", "480p"])}
+                traits={Options(choices=["720p", "480p"])},
             )
         )
         self.add_parameter(
@@ -74,7 +75,7 @@ class DecartLucyProT2V(DataNode):
                 default_value="landscape",
                 allowed_modes={ParameterMode.INPUT, ParameterMode.PROPERTY, ParameterMode.OUTPUT},
                 ui_options={"display_name": "Orientation"},
-                traits={Options(choices=["landscape", "portrait"])}
+                traits={Options(choices=["landscape", "portrait"])},
             )
         )
         self.add_parameter(
@@ -84,7 +85,7 @@ class DecartLucyProT2V(DataNode):
                 type="VideoUrlArtifact",
                 output_type="VideoUrlArtifact",
                 allowed_modes={ParameterMode.OUTPUT},
-                ui_options={"display_name": "Output Video"}
+                ui_options={"display_name": "Output Video"},
             )
         )
         self._output_file = ProjectFileParameter(node=self, name="output_file", default_filename="decart_video.mp4")
@@ -95,13 +96,13 @@ class DecartLucyProT2V(DataNode):
 
     def _convert_response_to_video_url_artifact(self, response_content: bytes) -> VideoUrlArtifact:
         """Convert API response content (video bytes) to a VideoUrlArtifact.
-        
+
         This method takes the raw video bytes from the API response and creates
         a VideoUrlArtifact by saving the video to the static file server.
-        
+
         Args:
             response_content: Raw video bytes from the API response
-            
+
         Returns:
             VideoUrlArtifact: Artifact containing the URL to the saved video
         """
@@ -143,43 +144,39 @@ class DecartLucyProT2V(DataNode):
         # Make API request
         api_url = f"{self.BASE_URL}{self.MODEL_NAME}"
         logger.info(f"Sending text-to-video request to Decart API: {api_url}")
-        
+
         try:
-            response = requests.post(
-                api_url,
-                headers=headers,
-                data=data_payload
-            )
-            
+            response = requests.post(api_url, headers=headers, data=data_payload)
+
             logger.info(f"API response received: status_code={response.status_code}")
             logger.debug(f"Response headers: {dict(response.headers)}")
-            
+
             # Check if the request was successful
             response.raise_for_status()
-            
+
             response_size = len(response.content)
             logger.info(f"Successfully received generated video: {response_size} bytes")
             logger.debug(f"Response content type: {response.headers.get('content-type', 'unknown')}")
-            
+
             # Log truncated response for binary content
             if response_size > 0:
                 content_preview = response.content[:100] if response_size > 100 else response.content
                 logger.debug(f"Response content preview (first 100 bytes): {content_preview}")
             else:
                 logger.debug("Response content is empty")
-            
+
         except requests.exceptions.RequestException as e:
             logger.error(f"Decart API request failed: {e}")
             raise
 
         # Convert response content to VideoUrlArtifact
         output_video = self._convert_response_to_video_url_artifact(response.content)
-        
+
         # Publish the VideoUrlArtifact to the output parameter
         self.publish_update_to_parameter("video_output", output_video)
 
-        return output_video 
-        
+        return output_video
+
     def _validate_api_key(self) -> str:
         api_key = GriptapeNodes.SecretsManager().get_secret(self.API_KEY_ENV_VAR)
         if not api_key:

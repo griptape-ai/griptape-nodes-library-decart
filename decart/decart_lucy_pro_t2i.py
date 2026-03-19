@@ -3,7 +3,6 @@ from __future__ import annotations
 import logging
 
 import requests
-
 from griptape.artifacts import ImageUrlArtifact
 from griptape_nodes.exe_types.core_types import Parameter, ParameterMode
 from griptape_nodes.exe_types.node_types import AsyncResult, DataNode
@@ -13,8 +12,8 @@ from griptape_nodes.traits.options import Options
 
 logger = logging.getLogger(__name__)
 
-class DecartLucyProT2I(DataNode):
 
+class DecartLucyProT2I(DataNode):
     """Generate an image from text using the Decart Lucy Pro T2I API.
 
     Args:
@@ -39,9 +38,11 @@ class DecartLucyProT2I(DataNode):
                 tooltip="Text prompt for image generation",
                 type="str",
                 allowed_modes={ParameterMode.INPUT, ParameterMode.PROPERTY, ParameterMode.OUTPUT},
-                ui_options={"display_name": "Prompt",
-                            "placeholder_text": "Describe the image you want to generate...",
-                            "multiline": True},
+                ui_options={
+                    "display_name": "Prompt",
+                    "placeholder_text": "Describe the image you want to generate...",
+                    "multiline": True,
+                },
             )
         )
         self.add_parameter(
@@ -51,7 +52,7 @@ class DecartLucyProT2I(DataNode):
                 type="int",
                 default_value=None,
                 allowed_modes={ParameterMode.INPUT, ParameterMode.PROPERTY, ParameterMode.OUTPUT},
-                ui_options={"display_name": "Seed"}
+                ui_options={"display_name": "Seed"},
             )
         )
         self.add_parameter(
@@ -62,7 +63,7 @@ class DecartLucyProT2I(DataNode):
                 default_value="720p",
                 allowed_modes={ParameterMode.PROPERTY},
                 settable=False,
-                ui_options={"display_name": "Resolution"}
+                ui_options={"display_name": "Resolution"},
             )
         )
         self.add_parameter(
@@ -73,7 +74,7 @@ class DecartLucyProT2I(DataNode):
                 default_value="landscape",
                 allowed_modes={ParameterMode.INPUT, ParameterMode.PROPERTY, ParameterMode.OUTPUT},
                 ui_options={"display_name": "Orientation"},
-                traits={Options(choices=["landscape", "portrait"])}
+                traits={Options(choices=["landscape", "portrait"])},
             )
         )
         self.add_parameter(
@@ -83,7 +84,7 @@ class DecartLucyProT2I(DataNode):
                 type="ImageUrlArtifact",
                 output_type="ImageUrlArtifact",
                 allowed_modes={ParameterMode.OUTPUT},
-                ui_options={"display_name": "Output Image"}
+                ui_options={"display_name": "Output Image"},
             )
         )
         self._output_file = ProjectFileParameter(node=self, name="output_file", default_filename="decart_image.png")
@@ -94,13 +95,13 @@ class DecartLucyProT2I(DataNode):
 
     def _convert_response_to_image_url_artifact(self, response_content: bytes) -> ImageUrlArtifact:
         """Convert API response content (image bytes) to an ImageUrlArtifact.
-        
+
         This method takes the raw image bytes from the API response and creates
         an ImageUrlArtifact by saving the image to the static file server.
-        
+
         Args:
             response_content: Raw image bytes from the API response
-            
+
         Returns:
             ImageUrlArtifact: Artifact containing the URL to the saved image
         """
@@ -139,43 +140,39 @@ class DecartLucyProT2I(DataNode):
         # Make API request
         api_url = f"{self.BASE_URL}{self.MODEL_NAME}"
         logger.info(f"Sending text-to-image request to Decart API: {api_url}")
-        
+
         try:
-            response = requests.post(
-                api_url,
-                headers=headers,
-                data=data_payload
-            )
-            
+            response = requests.post(api_url, headers=headers, data=data_payload)
+
             logger.info(f"API response received: status_code={response.status_code}")
             logger.debug(f"Response headers: {dict(response.headers)}")
-            
+
             # Check if the request was successful
             response.raise_for_status()
-            
+
             response_size = len(response.content)
             logger.info(f"Successfully received generated image: {response_size} bytes")
             logger.debug(f"Response content type: {response.headers.get('content-type', 'unknown')}")
-            
+
             # Log truncated response for binary content
             if response_size > 0:
                 content_preview = response.content[:100] if response_size > 100 else response.content
                 logger.debug(f"Response content preview (first 100 bytes): {content_preview}")
             else:
                 logger.debug("Response content is empty")
-            
+
         except requests.exceptions.RequestException as e:
             logger.error(f"Decart API request failed: {e}")
             raise
 
         # Convert response content to ImageUrlArtifact
         output_image = self._convert_response_to_image_url_artifact(response.content)
-        
+
         # Publish the ImageUrlArtifact to the output parameter
         self.publish_update_to_parameter("image_output", output_image)
 
-        return output_image 
-        
+        return output_image
+
     def _validate_api_key(self) -> str:
         api_key = GriptapeNodes.SecretsManager().get_secret(self.API_KEY_ENV_VAR)
         if not api_key:

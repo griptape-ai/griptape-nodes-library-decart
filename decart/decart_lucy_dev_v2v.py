@@ -5,18 +5,17 @@ import logging
 from io import BytesIO
 
 import requests
-
 from griptape.artifacts import VideoUrlArtifact
 from griptape_nodes.exe_types.core_types import Parameter, ParameterMode
 from griptape_nodes.exe_types.node_types import AsyncResult, DataNode
 from griptape_nodes.exe_types.param_components.project_file_parameter import ProjectFileParameter
-from griptape_nodes.files.file import File, FileLoadError
+from griptape_nodes.files.file import File
 from griptape_nodes.retained_mode.griptape_nodes import GriptapeNodes
 
 logger = logging.getLogger(__name__)
 
-class DecartLucyDevV2V(DataNode):
 
+class DecartLucyDevV2V(DataNode):
     """Generate a video from an input video using the Decart Lucy Dev V2V API.
 
     Args:
@@ -43,7 +42,7 @@ class DecartLucyDevV2V(DataNode):
                 type="VideoUrlArtifact",
                 input_types=["VideoUrlArtifact", "VideoArtifact"],
                 allowed_modes={ParameterMode.INPUT, ParameterMode.PROPERTY, ParameterMode.OUTPUT},
-                ui_options={"display_name": "Input Video"}
+                ui_options={"display_name": "Input Video"},
             )
         )
         self.add_parameter(
@@ -52,9 +51,11 @@ class DecartLucyDevV2V(DataNode):
                 tooltip="Text prompt for video transformation",
                 type="str",
                 allowed_modes={ParameterMode.INPUT, ParameterMode.PROPERTY, ParameterMode.OUTPUT},
-                ui_options={"display_name": "Prompt",
-                            "placeholder_text": "Describe the video transformation you want...",
-                            "multiline": True},
+                ui_options={
+                    "display_name": "Prompt",
+                    "placeholder_text": "Describe the video transformation you want...",
+                    "multiline": True,
+                },
             )
         )
         self.add_parameter(
@@ -64,7 +65,7 @@ class DecartLucyDevV2V(DataNode):
                 type="int",
                 default_value=None,
                 allowed_modes={ParameterMode.INPUT, ParameterMode.PROPERTY, ParameterMode.OUTPUT},
-                ui_options={"display_name": "Seed"}
+                ui_options={"display_name": "Seed"},
             )
         )
         self.add_parameter(
@@ -74,7 +75,7 @@ class DecartLucyDevV2V(DataNode):
                 type="str",
                 default_value="720p",
                 allowed_modes={ParameterMode.INPUT, ParameterMode.PROPERTY, ParameterMode.OUTPUT},
-                ui_options={"display_name": "Resolution"}
+                ui_options={"display_name": "Resolution"},
             )
         )
         self.add_parameter(
@@ -84,7 +85,7 @@ class DecartLucyDevV2V(DataNode):
                 type="VideoUrlArtifact",
                 output_type="VideoUrlArtifact",
                 allowed_modes={ParameterMode.OUTPUT},
-                ui_options={"display_name": "Output Video"}
+                ui_options={"display_name": "Output Video"},
             )
         )
         self._output_file = ProjectFileParameter(node=self, name="output_file", default_filename="decart_video.mp4")
@@ -95,13 +96,13 @@ class DecartLucyDevV2V(DataNode):
 
     def _convert_video_to_file_payload(self, video_input) -> dict:
         """Convert VideoUrlArtifact, VideoArtifact, or dict to the correct file payload for API submission.
-        
+
         This method converts the video artifact into the format expected by the Decart API,
         which expects a file-like object under the "data" key in the files parameter.
-        
+
         Args:
             video_input: VideoUrlArtifact, VideoArtifact instance, or dict representation
-            
+
         Returns:
             dict: Files payload in the format {"data": (filename, file_bytes, content_type)}
         """
@@ -109,63 +110,63 @@ class DecartLucyDevV2V(DataNode):
             # Handle dictionary input
             value = video_input.get("value", "")
             video_type = video_input.get("type", "video/mp4")
-            
+
             if "base64," in value:
                 # Handle base64-encoded video data
                 base64_data = value.split("base64,")[1] if "base64," in value else value
                 video_bytes = base64.b64decode(base64_data)
                 filename = "input.mp4"
-                
+
                 # Extract format from type if available
                 if "/" in video_type:
                     extension = video_type.split("/")[1]
                     filename = f"input.{extension}"
-                    
+
             elif value.startswith(("http://", "https://")):
                 # Handle URL in dictionary
                 video_bytes = File(value).read_bytes()
-                
+
                 # Extract filename from URL
-                url_path = value.split('/')[-1]
-                filename = url_path if '.' in url_path and len(url_path.split('.')[-1]) <= 4 else "input.mp4"
-                
+                url_path = value.split("/")[-1]
+                filename = url_path if "." in url_path and len(url_path.split(".")[-1]) <= 4 else "input.mp4"
+
             else:
                 raise ValueError(f"Unsupported video dictionary value format: {value[:50]}...")
-                
-        elif hasattr(video_input, 'to_bytes'):
+
+        elif hasattr(video_input, "to_bytes"):
             # For UrlArtifact-based artifacts (VideoUrlArtifact)
             video_bytes = video_input.to_bytes()
             # Extract filename from URL if possible, otherwise use default
             filename = "input.mp4"
-            if hasattr(video_input, 'value') and isinstance(video_input.value, str):
-                url_path = video_input.value.split('/')[-1]
-                if '.' in url_path and len(url_path.split('.')[-1]) <= 4:
+            if hasattr(video_input, "value") and isinstance(video_input.value, str):
+                url_path = video_input.value.split("/")[-1]
+                if "." in url_path and len(url_path.split(".")[-1]) <= 4:
                     filename = url_path
-                    
-        elif hasattr(video_input, 'value') and isinstance(video_input.value, bytes):
+
+        elif hasattr(video_input, "value") and isinstance(video_input.value, bytes):
             # For direct bytes artifacts
             video_bytes = video_input.value
             filename = "input.mp4"
-            
+
         else:
             raise ValueError(f"Unsupported video input type: {type(video_input)}")
-        
+
         # Create BytesIO object for the file-like interface
         video_file = BytesIO(video_bytes)
-        
+
         # Return the files payload in the format expected by requests
         # This mimics: files = {"data": open("/path/to/input.mp4", "rb")}
         return {"data": (filename, video_file, "video/mp4")}
 
     def _convert_response_to_video_url_artifact(self, response_content: bytes) -> VideoUrlArtifact:
         """Convert API response content (video bytes) to a VideoUrlArtifact.
-        
+
         This method takes the raw video bytes from the API response and creates
         a VideoUrlArtifact by saving the video to the static file server.
-        
+
         Args:
             response_content: Raw video bytes from the API response
-            
+
         Returns:
             VideoUrlArtifact: Artifact containing the URL to the saved video
         """
@@ -210,50 +211,45 @@ class DecartLucyDevV2V(DataNode):
         logger.debug(f"Files payload keys: {list(files_payload.keys())}")
         if files_payload:
             for key, (filename, file_obj, content_type) in files_payload.items():
-                file_size = len(file_obj.getvalue()) if hasattr(file_obj, 'getvalue') else 'unknown'
+                file_size = len(file_obj.getvalue()) if hasattr(file_obj, "getvalue") else "unknown"
                 logger.debug(f"File {key}: filename={filename}, content_type={content_type}, size={file_size} bytes")
 
         # Make API request
         api_url = f"{self.BASE_URL}{self.MODEL_NAME}"
         logger.info(f"Sending video-to-video request to Decart API: {api_url}")
-        
+
         try:
-            response = requests.post(
-                api_url,
-                headers=headers,
-                data=data_payload,
-                files=files_payload
-            )
-            
+            response = requests.post(api_url, headers=headers, data=data_payload, files=files_payload)
+
             logger.info(f"API response received: status_code={response.status_code}")
             logger.debug(f"Response headers: {dict(response.headers)}")
-            
+
             # Check if the request was successful
             response.raise_for_status()
-            
+
             response_size = len(response.content)
             logger.info(f"Successfully received transformed video: {response_size} bytes")
             logger.debug(f"Response content type: {response.headers.get('content-type', 'unknown')}")
-            
+
             # Log truncated response for binary content
             if response_size > 0:
                 content_preview = response.content[:100] if response_size > 100 else response.content
                 logger.debug(f"Response content preview (first 100 bytes): {content_preview}")
             else:
                 logger.debug("Response content is empty")
-            
+
         except requests.exceptions.RequestException as e:
             logger.error(f"Decart API request failed: {e}")
             raise
 
         # Convert response content to VideoUrlArtifact
         output_video = self._convert_response_to_video_url_artifact(response.content)
-        
+
         # Publish the VideoUrlArtifact to the output parameter
         self.publish_update_to_parameter("video_output", output_video)
 
-        return output_video 
-        
+        return output_video
+
     def _validate_api_key(self) -> str:
         api_key = GriptapeNodes.SecretsManager().get_secret(self.API_KEY_ENV_VAR)
         if not api_key:
