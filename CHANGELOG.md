@@ -10,4 +10,4 @@ the `library_version` in `decart/griptape_nodes_library.json`.
 
 <!-- Entries go in changelog.d/, one file each. See changelog.d/README.md. -->
 
-[Unreleased]: https://github.com/griptape-ai/griptape-nodes-library-decart/compare/v0.1.1...HEAD
+[Unreleased]: https://github.com/griptape-ai/griptape-nodes-library-decart/compare/28ba815590b174fc6b4e0b7b21a59a8bf6a91745...HEAD
