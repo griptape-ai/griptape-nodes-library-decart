@@ -169,7 +169,12 @@ class DecartLucyProT2I(DataNode):
 
         except requests.exceptions.RequestException as e:
             logger.error(f"Decart API request failed: {e}")
-            raise NodeError.from_request_exception(e, provider="Decart", secret_name=self.API_KEY_ENV_VAR) from e
+            raise NodeError.from_request_exception(
+                e,
+                provider="Decart",
+                secret_name=self.API_KEY_ENV_VAR,
+                key_refused=getattr(e.response, "status_code", None) == 401,
+            ) from e
 
         # Convert response content to ImageUrlArtifact
         output_image = self._convert_response_to_image_url_artifact(response.content)

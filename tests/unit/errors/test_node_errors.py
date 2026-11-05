@@ -158,11 +158,23 @@ def test_provider_error_has_message_status_and_response(with_key, fake):
     assert error.response == RETIRED
 
 
-def test_refused_key_links_to_settings(with_key, fake):
+def test_401_is_a_refused_key_and_links_to_settings(with_key, fake):
     server = fake(401, {"detail": "Invalid API key"})
     with pytest.raises(NodeError) as info:
         run_against(make_node(*T2I), server)
     assert info.value.links[0].url == "#settings-secrets?filter=DECART_API_KEY"
+    assert info.value.fields["status_code"] == 401
+
+
+def test_403_is_not_treated_as_a_refused_key(with_key, fake):
+    body = {"detail": "Forbidden"}
+    server = fake(403, body)
+    with pytest.raises(NodeError) as info:
+        run_against(make_node(*T2I), server)
+    assert info.value.links == []
+    assert "refused the API key" not in str(info.value)
+    assert info.value.fields["status_code"] == 403
+    assert info.value.response == body
 
 
 def test_connection_failure(with_key, fake):
