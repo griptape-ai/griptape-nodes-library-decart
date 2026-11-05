@@ -5,7 +5,6 @@ import logging
 from io import BytesIO
 
 import requests
-from decart_errors import error_from_request_exception, input_error, missing_key_error
 from griptape.artifacts import VideoUrlArtifact
 from griptape_nodes.exe_types.core_types import NodeError, Parameter, ParameterMode
 from griptape_nodes.exe_types.node_types import AsyncResult, DataNode
@@ -28,6 +27,7 @@ class DecartLucyVideoEdit(DataNode):
 
     SERVICE_NAME = "Decart"
     API_KEY_ENV_VAR = "DECART_API_KEY"
+    API_KEY_URL = "https://platform.decart.ai/"
     BASE_URL = "https://api.decart.ai/v1/generate/"
     MODEL_NAME = "lucy-pro-v2v"
 
@@ -110,7 +110,7 @@ class DecartLucyVideoEdit(DataNode):
                 filename = url_path if "." in url_path and len(url_path.split(".")[-1]) <= 4 else "input.mp4"
 
             else:
-                raise input_error(
+                raise self._input_error(
                     "'Input Video' has a value this node can't read. Connect a video, or a URL or base64 data for one.",
                     "video_input",
                 )
@@ -131,7 +131,7 @@ class DecartLucyVideoEdit(DataNode):
             filename = "input.mp4"
 
         else:
-            raise input_error("'Input Video' must be a video. Connect a video output.", "video_input")
+            raise self._input_error("'Input Video' must be a video. Connect a video output.", "video_input")
 
         # Create BytesIO object for the file-like interface
         video_file = BytesIO(video_bytes)
@@ -161,9 +161,13 @@ class DecartLucyVideoEdit(DataNode):
         # Create and return VideoUrlArtifact with the URL
         return VideoUrlArtifact(saved.location)
 
+    @staticmethod
+    def _input_error(message: str, parameter: str) -> NodeError:
+        return NodeError(message, fields={"parameter": parameter})
+
     def validate_before_node_run(self) -> list[Exception] | None:
         if not GriptapeNodes.SecretsManager().get_secret(self.API_KEY_ENV_VAR):
-            return [missing_key_error()]
+            return [NodeError.from_missing_secret(self.API_KEY_ENV_VAR, key_url=self.API_KEY_URL)]
         return None
 
     def process(self) -> AsyncResult[None]:
@@ -176,10 +180,10 @@ class DecartLucyVideoEdit(DataNode):
         prompt = self.get_parameter_value("prompt")
 
         if not video_input:
-            raise input_error("Connect a video to 'Input Video'.", "video_input")
+            raise self._input_error("Connect a video to 'Input Video'.", "video_input")
 
         if not prompt:
-            raise input_error("Enter a prompt in 'Prompt'.", "prompt")
+            raise self._input_error("Enter a prompt in 'Prompt'.", "prompt")
 
         # Convert video input to the correct file payload format
         files_payload = self._convert_video_to_file_payload(video_input)
@@ -221,7 +225,7 @@ class DecartLucyVideoEdit(DataNode):
 
         except requests.exceptions.RequestException as e:
             logger.error(f"Decart API request failed: {e}")
-            raise error_from_request_exception(e) from e
+            raise NodeError.from_request_exception(e, provider="Decart", secret_name=self.API_KEY_ENV_VAR) from e
 
         # Convert response content to VideoUrlArtifact
         output_video = self._convert_response_to_video_url_artifact(response.content)
@@ -234,5 +238,5 @@ class DecartLucyVideoEdit(DataNode):
     def _validate_api_key(self) -> str:
         api_key = GriptapeNodes.SecretsManager().get_secret(self.API_KEY_ENV_VAR)
         if not api_key:
-            raise missing_key_error()
+            raise NodeError.from_missing_secret(self.API_KEY_ENV_VAR, key_url=self.API_KEY_URL)
         return api_key

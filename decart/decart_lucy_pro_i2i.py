@@ -5,7 +5,6 @@ import logging
 from io import BytesIO
 
 import requests
-from decart_errors import error_from_request_exception, input_error, missing_key_error
 from griptape.artifacts import ImageUrlArtifact
 from griptape_nodes.exe_types.core_types import NodeError, Parameter, ParameterMode
 from griptape_nodes.exe_types.node_types import AsyncResult, DataNode
@@ -32,6 +31,7 @@ class DecartLucyProI2I(DataNode):
 
     SERVICE_NAME = "Decart"
     API_KEY_ENV_VAR = "DECART_API_KEY"
+    API_KEY_URL = "https://platform.decart.ai/"
     BASE_URL = "https://api.decart.ai/v1/generate/"
     MODEL_NAME = "lucy-pro-i2i"
 
@@ -145,7 +145,7 @@ class DecartLucyProI2I(DataNode):
                 filename = url_path if "." in url_path and len(url_path.split(".")[-1]) <= 4 else "input.png"
 
             else:
-                raise input_error(
+                raise self._input_error(
                     "'Input Image' has a value this node can't read. Connect an image, or a URL or base64 data for one.",
                     "image_input",
                 )
@@ -166,7 +166,7 @@ class DecartLucyProI2I(DataNode):
             filename = "input.png"
 
         else:
-            raise input_error("'Input Image' must be an image. Connect an image output.", "image_input")
+            raise self._input_error("'Input Image' must be an image. Connect an image output.", "image_input")
 
         # Create BytesIO object for the file-like interface
         image_file = BytesIO(image_bytes)
@@ -196,9 +196,13 @@ class DecartLucyProI2I(DataNode):
         # Create and return ImageUrlArtifact with the URL
         return ImageUrlArtifact(saved.location)
 
+    @staticmethod
+    def _input_error(message: str, parameter: str) -> NodeError:
+        return NodeError(message, fields={"parameter": parameter})
+
     def validate_before_node_run(self) -> list[Exception] | None:
         if not GriptapeNodes.SecretsManager().get_secret(self.API_KEY_ENV_VAR):
-            return [missing_key_error()]
+            return [NodeError.from_missing_secret(self.API_KEY_ENV_VAR, key_url=self.API_KEY_URL)]
         return None
 
     def process(self) -> AsyncResult[None]:
@@ -214,10 +218,10 @@ class DecartLucyProI2I(DataNode):
         enhance_prompt = self.get_parameter_value("enhance_prompt")
 
         if not image_input:
-            raise input_error("Connect an image to 'Input Image'.", "image_input")
+            raise self._input_error("Connect an image to 'Input Image'.", "image_input")
 
         if not prompt:
-            raise input_error("Enter a prompt in 'Prompt'.", "prompt")
+            raise self._input_error("Enter a prompt in 'Prompt'.", "prompt")
 
         # Convert image input to the correct file payload format
         files_payload = self._convert_image_to_file_payload(image_input)
@@ -265,7 +269,7 @@ class DecartLucyProI2I(DataNode):
 
         except requests.exceptions.RequestException as e:
             logger.error(f"Decart API request failed: {e}")
-            raise error_from_request_exception(e) from e
+            raise NodeError.from_request_exception(e, provider="Decart", secret_name=self.API_KEY_ENV_VAR) from e
 
         # Convert response content to ImageUrlArtifact
         output_image = self._convert_response_to_image_url_artifact(response.content)
@@ -278,5 +282,5 @@ class DecartLucyProI2I(DataNode):
     def _validate_api_key(self) -> str:
         api_key = GriptapeNodes.SecretsManager().get_secret(self.API_KEY_ENV_VAR)
         if not api_key:
-            raise missing_key_error()
+            raise NodeError.from_missing_secret(self.API_KEY_ENV_VAR, key_url=self.API_KEY_URL)
         return api_key

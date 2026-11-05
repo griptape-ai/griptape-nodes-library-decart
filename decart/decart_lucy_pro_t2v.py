@@ -3,7 +3,6 @@ from __future__ import annotations
 import logging
 
 import requests
-from decart_errors import error_from_request_exception, input_error, missing_key_error
 from griptape.artifacts import VideoUrlArtifact
 from griptape_nodes.exe_types.core_types import NodeError, Parameter, ParameterMode
 from griptape_nodes.exe_types.node_types import AsyncResult, DataNode
@@ -28,6 +27,7 @@ class DecartLucyProT2V(DataNode):
 
     SERVICE_NAME = "Decart"
     API_KEY_ENV_VAR = "DECART_API_KEY"
+    API_KEY_URL = "https://platform.decart.ai/"
     BASE_URL = "https://api.decart.ai/v1/generate/"
     MODEL_NAME = "lucy-pro-t2v"
 
@@ -116,9 +116,13 @@ class DecartLucyProT2V(DataNode):
         # Create and return VideoUrlArtifact with the URL
         return VideoUrlArtifact(saved.location)
 
+    @staticmethod
+    def _input_error(message: str, parameter: str) -> NodeError:
+        return NodeError(message, fields={"parameter": parameter})
+
     def validate_before_node_run(self) -> list[Exception] | None:
         if not GriptapeNodes.SecretsManager().get_secret(self.API_KEY_ENV_VAR):
-            return [missing_key_error()]
+            return [NodeError.from_missing_secret(self.API_KEY_ENV_VAR, key_url=self.API_KEY_URL)]
         return None
 
     def process(self) -> AsyncResult[None]:
@@ -133,7 +137,7 @@ class DecartLucyProT2V(DataNode):
         orientation = self.get_parameter_value("orientation")
 
         if not prompt:
-            raise input_error("Enter a prompt in 'Prompt'.", "prompt")
+            raise self._input_error("Enter a prompt in 'Prompt'.", "prompt")
 
         # Prepare data payload (no file upload for text-to-video)
         data_payload = {"prompt": prompt}
@@ -173,7 +177,7 @@ class DecartLucyProT2V(DataNode):
 
         except requests.exceptions.RequestException as e:
             logger.error(f"Decart API request failed: {e}")
-            raise error_from_request_exception(e) from e
+            raise NodeError.from_request_exception(e, provider="Decart", secret_name=self.API_KEY_ENV_VAR) from e
 
         # Convert response content to VideoUrlArtifact
         output_video = self._convert_response_to_video_url_artifact(response.content)
@@ -186,5 +190,5 @@ class DecartLucyProT2V(DataNode):
     def _validate_api_key(self) -> str:
         api_key = GriptapeNodes.SecretsManager().get_secret(self.API_KEY_ENV_VAR)
         if not api_key:
-            raise missing_key_error()
+            raise NodeError.from_missing_secret(self.API_KEY_ENV_VAR, key_url=self.API_KEY_URL)
         return api_key

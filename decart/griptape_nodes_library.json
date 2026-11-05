@@ -16,7 +16,7 @@
         "author": "Ian Massingham",
         "description": "Nodes for interating with the Decart API",
         "library_version": "0.2.0",
-        "engine_version": "0.104.0",
+        "engine_version": "0.105.0",
         "tags": [
             "Griptape",
             "AI",

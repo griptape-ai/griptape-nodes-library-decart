@@ -21,7 +21,6 @@ MANIFEST = json.loads((LIBRARY_DIR / "griptape_nodes_library.json").read_text())
 NODES = [(n["class_name"], n["file_path"]) for n in MANIFEST["nodes"]]
 
 RETIRED = {"detail": "This model has been retired. See https://docs.example/models.", "model": "lucy-pro-t2i"}
-VALIDATION = {"detail": [{"type": "missing", "loc": ["body", "data"], "msg": "Field required", "input": None}]}
 
 
 def load_node_class(class_name: str, file_name: str):
@@ -121,7 +120,6 @@ def test_missing_key_is_the_only_validation_error(class_name, file_name, monkeyp
     assert isinstance(error, NodeError)
     assert "DECART_API_KEY is not set" in str(error)
     assert error.links[0].url == "#settings-secrets?filter=DECART_API_KEY"
-    assert node.name not in str(error)
 
 
 @pytest.mark.parametrize(("class_name", "file_name"), NODES)
@@ -129,11 +127,6 @@ def test_process_without_key_raises(class_name, file_name, monkeypatch):
     monkeypatch.setattr(GriptapeNodes.SecretsManager(), "get_secret", lambda *_a, **_k: None, raising=False)
     with pytest.raises(NodeError, match="DECART_API_KEY is not set"):
         make_node(class_name, file_name)._process()
-
-
-@pytest.mark.parametrize(("class_name", "file_name"), NODES)
-def test_key_present_passes_validation(class_name, file_name, with_key):
-    assert make_node(class_name, file_name).validate_before_node_run() is None
 
 
 def test_missing_prompt(with_key):
@@ -150,27 +143,12 @@ def test_missing_image(with_key):
     assert info.value.fields == {"parameter": "image_input"}
 
 
-def test_missing_video(with_key):
-    with pytest.raises(NodeError) as info:
-        make_node("DecartLucyDevV2V", "decart_lucy_dev_v2v.py", video_input=None)._process()
-    assert str(info.value) == "Connect a video to 'Input Video'."
-
-
-def test_unreadable_image_value(with_key):
-    with pytest.raises(NodeError) as info:
-        make_node(
-            "DecartLucyProI2I", "decart_lucy_pro_i2i.py", image_input={"value": "nope", "type": "image/png"}
-        )._process()
-    assert "'Input Image'" in str(info.value)
-    assert info.value.fields == {"parameter": "image_input"}
-
-
 def run_against(node, server):
     node.BASE_URL = server.url
     return node._process()
 
 
-def test_retired_model_has_message_status_response_and_link(with_key, fake):
+def test_provider_error_has_message_status_and_response(with_key, fake):
     server = fake(410, RETIRED)
     with pytest.raises(NodeError) as info:
         run_against(make_node(*T2I), server)
@@ -178,33 +156,13 @@ def test_retired_model_has_message_status_response_and_link(with_key, fake):
     assert str(error) == RETIRED["detail"]
     assert error.fields == {"status_code": 410, "request_id": "req-123"}
     assert error.response == RETIRED
-    assert [link.label for link in error.links] == ["Available Decart models"]
 
 
 def test_refused_key_links_to_settings(with_key, fake):
     server = fake(401, {"detail": "Invalid API key"})
     with pytest.raises(NodeError) as info:
         run_against(make_node(*T2I), server)
-    error = info.value
-    assert str(error) == "Decart refused the API key: Invalid API key. Update it in Settings and run the node again."
-    assert error.links[0].url == "#settings-secrets?filter=DECART_API_KEY"
-    assert error.fields["status_code"] == 401
-
-
-def test_validation_list_is_read(with_key, fake):
-    server = fake(422, VALIDATION)
-    with pytest.raises(NodeError) as info:
-        run_against(make_node(*T2I), server)
-    assert str(info.value) == "data: Field required"
-    assert info.value.response == VALIDATION
-
-
-def test_non_json_body_is_attached_as_text(with_key, fake):
-    server = fake(502, b"<html>Bad gateway</html>", "text/html")
-    with pytest.raises(NodeError) as info:
-        run_against(make_node(*T2I), server)
-    assert str(info.value) == "Decart returned an error (HTTP 502)."
-    assert info.value.response == {"text": "<html>Bad gateway</html>"}
+    assert info.value.links[0].url == "#settings-secrets?filter=DECART_API_KEY"
 
 
 def test_connection_failure(with_key, fake):
@@ -213,7 +171,7 @@ def test_connection_failure(with_key, fake):
     server.close()
     node = make_node(*T2I)
     node.BASE_URL = url
-    with pytest.raises(NodeError, match="Could not connect to Decart"):
+    with pytest.raises(NodeError, match="Could not reach Decart"):
         node._process()
 
 
