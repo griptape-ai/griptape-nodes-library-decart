@@ -220,14 +220,15 @@ The library includes a `griptape_nodes_library.json` file that defines:
 
 #### API Key Not Found
 ```
-ValueError: DecartLucyVideoEdit_1 is missing DECART_API_KEY. Ensure it's set in the environment/config.
+DECART_API_KEY is not set. Add it in Settings → API Keys & Secrets, then run the node again.
 ```
 
 **Solution**: Ensure your API key is properly configured using one of the methods described in the [API Key Setup](#-api-key-setup) section.
 
 #### Invalid Input Format
 ```
-ValueError: Unsupported image/video input type: <class 'str'>
+'Input Image' must be an image. Connect an image output.
+'Input Video' must be a video. Connect a video output.
 ```
 
 **Solution**: Ensure your inputs are in supported formats:
