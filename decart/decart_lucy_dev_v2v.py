@@ -132,9 +132,9 @@ class DecartLucyDevV2V(DataNode):
                 filename = url_path if "." in url_path and len(url_path.split(".")[-1]) <= 4 else "input.mp4"
 
             else:
-                raise self._input_error(
+                raise NodeError(
                     "'Input Video' has a value this node can't read. Connect a video, or a URL or base64 data for one.",
-                    "video_input",
+                    fields={"parameter": "video_input"},
                 )
 
         elif hasattr(video_input, "to_bytes"):
@@ -153,7 +153,9 @@ class DecartLucyDevV2V(DataNode):
             filename = "input.mp4"
 
         else:
-            raise self._input_error("'Input Video' must be a video. Connect a video output.", "video_input")
+            raise NodeError(
+                "'Input Video' must be a video. Connect a video output.", fields={"parameter": "video_input"}
+            )
 
         # Create BytesIO object for the file-like interface
         video_file = BytesIO(video_bytes)
@@ -183,10 +185,6 @@ class DecartLucyDevV2V(DataNode):
         # Create and return VideoUrlArtifact with the URL
         return VideoUrlArtifact(saved.location)
 
-    @staticmethod
-    def _input_error(message: str, parameter: str) -> NodeError:
-        return NodeError(message, fields={"parameter": parameter})
-
     def validate_before_node_run(self) -> list[Exception] | None:
         if not GriptapeNodes.SecretsManager().get_secret(self.API_KEY_ENV_VAR):
             return [NodeError.from_missing_secret(self.API_KEY_ENV_VAR, key_url=self.API_KEY_URL)]
@@ -204,10 +202,10 @@ class DecartLucyDevV2V(DataNode):
         resolution = self.get_parameter_value("resolution")
 
         if not video_input:
-            raise self._input_error("Connect a video to 'Input Video'.", "video_input")
+            raise NodeError("Connect a video to 'Input Video'.", fields={"parameter": "video_input"})
 
         if not prompt:
-            raise self._input_error("Enter a prompt in 'Prompt'.", "prompt")
+            raise NodeError("Enter a prompt in 'Prompt'.", fields={"parameter": "prompt"})
 
         # Convert video input to the correct file payload format
         files_payload = self._convert_video_to_file_payload(video_input)

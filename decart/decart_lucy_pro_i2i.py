@@ -145,9 +145,9 @@ class DecartLucyProI2I(DataNode):
                 filename = url_path if "." in url_path and len(url_path.split(".")[-1]) <= 4 else "input.png"
 
             else:
-                raise self._input_error(
+                raise NodeError(
                     "'Input Image' has a value this node can't read. Connect an image, or a URL or base64 data for one.",
-                    "image_input",
+                    fields={"parameter": "image_input"},
                 )
 
         elif hasattr(image_input, "to_bytes"):
@@ -166,7 +166,9 @@ class DecartLucyProI2I(DataNode):
             filename = "input.png"
 
         else:
-            raise self._input_error("'Input Image' must be an image. Connect an image output.", "image_input")
+            raise NodeError(
+                "'Input Image' must be an image. Connect an image output.", fields={"parameter": "image_input"}
+            )
 
         # Create BytesIO object for the file-like interface
         image_file = BytesIO(image_bytes)
@@ -196,10 +198,6 @@ class DecartLucyProI2I(DataNode):
         # Create and return ImageUrlArtifact with the URL
         return ImageUrlArtifact(saved.location)
 
-    @staticmethod
-    def _input_error(message: str, parameter: str) -> NodeError:
-        return NodeError(message, fields={"parameter": parameter})
-
     def validate_before_node_run(self) -> list[Exception] | None:
         if not GriptapeNodes.SecretsManager().get_secret(self.API_KEY_ENV_VAR):
             return [NodeError.from_missing_secret(self.API_KEY_ENV_VAR, key_url=self.API_KEY_URL)]
@@ -218,10 +216,10 @@ class DecartLucyProI2I(DataNode):
         enhance_prompt = self.get_parameter_value("enhance_prompt")
 
         if not image_input:
-            raise self._input_error("Connect an image to 'Input Image'.", "image_input")
+            raise NodeError("Connect an image to 'Input Image'.", fields={"parameter": "image_input"})
 
         if not prompt:
-            raise self._input_error("Enter a prompt in 'Prompt'.", "prompt")
+            raise NodeError("Enter a prompt in 'Prompt'.", fields={"parameter": "prompt"})
 
         # Convert image input to the correct file payload format
         files_payload = self._convert_image_to_file_payload(image_input)

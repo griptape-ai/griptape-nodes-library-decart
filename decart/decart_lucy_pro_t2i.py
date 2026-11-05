@@ -115,10 +115,6 @@ class DecartLucyProT2I(DataNode):
         # Create and return ImageUrlArtifact with the URL
         return ImageUrlArtifact(saved.location)
 
-    @staticmethod
-    def _input_error(message: str, parameter: str) -> NodeError:
-        return NodeError(message, fields={"parameter": parameter})
-
     def validate_before_node_run(self) -> list[Exception] | None:
         if not GriptapeNodes.SecretsManager().get_secret(self.API_KEY_ENV_VAR):
             return [NodeError.from_missing_secret(self.API_KEY_ENV_VAR, key_url=self.API_KEY_URL)]
@@ -135,7 +131,7 @@ class DecartLucyProT2I(DataNode):
         orientation = self.get_parameter_value("orientation")
 
         if not prompt:
-            raise self._input_error("Enter a prompt in 'Prompt'.", "prompt")
+            raise NodeError("Enter a prompt in 'Prompt'.", fields={"parameter": "prompt"})
 
         # Prepare data payload (no file upload for text-to-image)
         data_payload = {"prompt": prompt}
