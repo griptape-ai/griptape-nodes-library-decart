@@ -6,7 +6,7 @@ from io import BytesIO
 
 import requests
 from griptape.artifacts import VideoUrlArtifact
-from griptape_nodes.exe_types.core_types import Parameter, ParameterMode
+from griptape_nodes.exe_types.core_types import NodeError, Parameter, ParameterMode
 from griptape_nodes.exe_types.node_types import AsyncResult, DataNode
 from griptape_nodes.exe_types.param_components.project_file_parameter import ProjectFileParameter
 from griptape_nodes.files.file import File
@@ -29,6 +29,7 @@ class DecartLucyDevV2V(DataNode):
 
     SERVICE_NAME = "Decart"
     API_KEY_ENV_VAR = "DECART_API_KEY"
+    API_KEY_URL = "https://platform.decart.ai/"
     BASE_URL = "https://api.decart.ai/v1/generate/"
     MODEL_NAME = "lucy-dev-v2v"
 
@@ -131,7 +132,10 @@ class DecartLucyDevV2V(DataNode):
                 filename = url_path if "." in url_path and len(url_path.split(".")[-1]) <= 4 else "input.mp4"
 
             else:
-                raise ValueError(f"Unsupported video dictionary value format: {value[:50]}...")
+                raise NodeError(
+                    "'Input Video' has a value this node can't read. Connect a video, or a URL or base64 data for one.",
+                    fields={"parameter": "video_input"},
+                )
 
         elif hasattr(video_input, "to_bytes"):
             # For UrlArtifact-based artifacts (VideoUrlArtifact)
@@ -149,7 +153,9 @@ class DecartLucyDevV2V(DataNode):
             filename = "input.mp4"
 
         else:
-            raise ValueError(f"Unsupported video input type: {type(video_input)}")
+            raise NodeError(
+                "'Input Video' must be a video. Connect a video output.", fields={"parameter": "video_input"}
+            )
 
         # Create BytesIO object for the file-like interface
         video_file = BytesIO(video_bytes)
@@ -171,13 +177,18 @@ class DecartLucyDevV2V(DataNode):
             VideoUrlArtifact: Artifact containing the URL to the saved video
         """
         if not response_content:
-            raise ValueError("Empty response content - no video data received")
+            raise NodeError("Decart returned an empty response with no video data. Run the node again.")
 
         # Save the video bytes to the project file
         saved = self._output_file.build_file().write_bytes(response_content)
 
         # Create and return VideoUrlArtifact with the URL
         return VideoUrlArtifact(saved.location)
+
+    def validate_before_node_run(self) -> list[Exception] | None:
+        if not GriptapeNodes.SecretsManager().get_secret(self.API_KEY_ENV_VAR):
+            return [NodeError.from_missing_secret(self.API_KEY_ENV_VAR, key_url=self.API_KEY_URL)]
+        return None
 
     def process(self) -> AsyncResult[None]:
         yield lambda: self._process()
@@ -191,10 +202,10 @@ class DecartLucyDevV2V(DataNode):
         resolution = self.get_parameter_value("resolution")
 
         if not video_input:
-            raise ValueError("No input video provided")
+            raise NodeError("Connect a video to 'Input Video'.", fields={"parameter": "video_input"})
 
         if not prompt:
-            raise ValueError("No prompt provided")
+            raise NodeError("Enter a prompt in 'Prompt'.", fields={"parameter": "prompt"})
 
         # Convert video input to the correct file payload format
         files_payload = self._convert_video_to_file_payload(video_input)
@@ -240,7 +251,7 @@ class DecartLucyDevV2V(DataNode):
 
         except requests.exceptions.RequestException as e:
             logger.error(f"Decart API request failed: {e}")
-            raise
+            raise NodeError.from_request_exception(e, provider="Decart", secret_name=self.API_KEY_ENV_VAR) from e
 
         # Convert response content to VideoUrlArtifact
         output_video = self._convert_response_to_video_url_artifact(response.content)
@@ -253,6 +264,5 @@ class DecartLucyDevV2V(DataNode):
     def _validate_api_key(self) -> str:
         api_key = GriptapeNodes.SecretsManager().get_secret(self.API_KEY_ENV_VAR)
         if not api_key:
-            msg = f"{self.name} is missing {self.API_KEY_ENV_VAR}. Ensure it's set in the environment/config."
-            raise ValueError(msg)
+            raise NodeError.from_missing_secret(self.API_KEY_ENV_VAR, key_url=self.API_KEY_URL)
         return api_key
