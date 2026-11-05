@@ -5,8 +5,9 @@ import logging
 from io import BytesIO
 
 import requests
+from decart_errors import error_from_request_exception, input_error, missing_key_error
 from griptape.artifacts import VideoUrlArtifact
-from griptape_nodes.exe_types.core_types import Parameter, ParameterMode
+from griptape_nodes.exe_types.core_types import NodeError, Parameter, ParameterMode
 from griptape_nodes.exe_types.node_types import AsyncResult, DataNode
 from griptape_nodes.exe_types.param_components.project_file_parameter import ProjectFileParameter
 from griptape_nodes.files.file import File
@@ -133,7 +134,10 @@ class DecartLucyProI2V(DataNode):
                 filename = url_path if "." in url_path and len(url_path.split(".")[-1]) <= 4 else "input.png"
 
             else:
-                raise ValueError(f"Unsupported image dictionary value format: {value[:50]}...")
+                raise input_error(
+                    "'Input Image' has a value this node can't read. Connect an image, or a URL or base64 data for one.",
+                    "image_input",
+                )
 
         elif hasattr(image_input, "to_bytes"):
             # For UrlArtifact-based artifacts (ImageUrlArtifact)
@@ -151,7 +155,7 @@ class DecartLucyProI2V(DataNode):
             filename = "input.png"
 
         else:
-            raise ValueError(f"Unsupported image input type: {type(image_input)}")
+            raise input_error("'Input Image' must be an image. Connect an image output.", "image_input")
 
         # Create BytesIO object for the file-like interface
         image_file = BytesIO(image_bytes)
@@ -173,13 +177,18 @@ class DecartLucyProI2V(DataNode):
             VideoUrlArtifact: Artifact containing the URL to the saved video
         """
         if not response_content:
-            raise ValueError("Empty response content - no video data received")
+            raise NodeError("Decart returned an empty response with no video data. Run the node again.")
 
         # Save the video bytes to the project file
         saved = self._output_file.build_file().write_bytes(response_content)
 
         # Create and return VideoUrlArtifact with the URL
         return VideoUrlArtifact(saved.location)
+
+    def validate_before_node_run(self) -> list[Exception] | None:
+        if not GriptapeNodes.SecretsManager().get_secret(self.API_KEY_ENV_VAR):
+            return [missing_key_error()]
+        return None
 
     def process(self) -> AsyncResult[None]:
         yield lambda: self._process()
@@ -193,10 +202,10 @@ class DecartLucyProI2V(DataNode):
         resolution = self.get_parameter_value("resolution")
 
         if not image_input:
-            raise ValueError("No input image provided")
+            raise input_error("Connect an image to 'Input Image'.", "image_input")
 
         if not prompt:
-            raise ValueError("No prompt provided")
+            raise input_error("Enter a prompt in 'Prompt'.", "prompt")
 
         # Convert image input to the correct file payload format
         files_payload = self._convert_image_to_file_payload(image_input)
@@ -242,7 +251,7 @@ class DecartLucyProI2V(DataNode):
 
         except requests.exceptions.RequestException as e:
             logger.error(f"Decart API request failed: {e}")
-            raise
+            raise error_from_request_exception(e) from e
 
         # Convert response content to VideoUrlArtifact
         output_video = self._convert_response_to_video_url_artifact(response.content)
@@ -255,6 +264,5 @@ class DecartLucyProI2V(DataNode):
     def _validate_api_key(self) -> str:
         api_key = GriptapeNodes.SecretsManager().get_secret(self.API_KEY_ENV_VAR)
         if not api_key:
-            msg = f"{self.name} is missing {self.API_KEY_ENV_VAR}. Ensure it's set in the environment/config."
-            raise ValueError(msg)
+            raise missing_key_error()
         return api_key

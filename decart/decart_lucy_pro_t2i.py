@@ -3,8 +3,9 @@ from __future__ import annotations
 import logging
 
 import requests
+from decart_errors import error_from_request_exception, input_error, missing_key_error
 from griptape.artifacts import ImageUrlArtifact
-from griptape_nodes.exe_types.core_types import Parameter, ParameterMode
+from griptape_nodes.exe_types.core_types import NodeError, Parameter, ParameterMode
 from griptape_nodes.exe_types.node_types import AsyncResult, DataNode
 from griptape_nodes.exe_types.param_components.project_file_parameter import ProjectFileParameter
 from griptape_nodes.retained_mode.griptape_nodes import GriptapeNodes
@@ -106,13 +107,18 @@ class DecartLucyProT2I(DataNode):
             ImageUrlArtifact: Artifact containing the URL to the saved image
         """
         if not response_content:
-            raise ValueError("Empty response content - no image data received")
+            raise NodeError("Decart returned an empty response with no image data. Run the node again.")
 
         # Save the image bytes to the project file
         saved = self._output_file.build_file().write_bytes(response_content)
 
         # Create and return ImageUrlArtifact with the URL
         return ImageUrlArtifact(saved.location)
+
+    def validate_before_node_run(self) -> list[Exception] | None:
+        if not GriptapeNodes.SecretsManager().get_secret(self.API_KEY_ENV_VAR):
+            return [missing_key_error()]
+        return None
 
     def process(self) -> AsyncResult[None]:
         yield lambda: self._process()
@@ -125,7 +131,7 @@ class DecartLucyProT2I(DataNode):
         orientation = self.get_parameter_value("orientation")
 
         if not prompt:
-            raise ValueError("No prompt provided")
+            raise input_error("Enter a prompt in 'Prompt'.", "prompt")
 
         # Prepare data payload (no file upload for text-to-image)
         data_payload = {"prompt": prompt}
@@ -163,7 +169,7 @@ class DecartLucyProT2I(DataNode):
 
         except requests.exceptions.RequestException as e:
             logger.error(f"Decart API request failed: {e}")
-            raise
+            raise error_from_request_exception(e) from e
 
         # Convert response content to ImageUrlArtifact
         output_image = self._convert_response_to_image_url_artifact(response.content)
@@ -176,6 +182,5 @@ class DecartLucyProT2I(DataNode):
     def _validate_api_key(self) -> str:
         api_key = GriptapeNodes.SecretsManager().get_secret(self.API_KEY_ENV_VAR)
         if not api_key:
-            msg = f"{self.name} is missing {self.API_KEY_ENV_VAR}. Ensure it's set in the environment/config."
-            raise ValueError(msg)
+            raise missing_key_error()
         return api_key

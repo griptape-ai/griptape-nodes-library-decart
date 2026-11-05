@@ -11,7 +11,7 @@ dependencies = [
 ]
 
 [dependency-groups]
-dev = ["pyright>=1.1.396", "pytest-asyncio>=0.21.0", "ruff>=0.8.0", "pytest", "griptape-nodes-engine"]
+dev = ["pyright>=1.1.396", "pytest-asyncio>=0.21.0", "ruff>=0.8.0", "pytest", "griptape-nodes-engine>=0.104.0"]
 
 [tool.uv.sources]
 griptape-nodes-engine = { git = "https://github.com/griptape-ai/griptape-nodes-engine", rev="latest"}
@@ -60,3 +60,7 @@ reportMissingModuleSource = false
 reportAttributeAccessIssue = false
 reportCallIssue = false
 reportReturnType = false
+extraPaths = ["decart"]
+
+[tool.pytest.ini_options]
+pythonpath = ["decart"]
